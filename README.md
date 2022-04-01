@@ -4,7 +4,7 @@
 
 fedora35 distro for wsl2.
 
-minimal fedora35 + `podman` + `python3` + "wsl" user with `sudo` access.
+minimal fedora35 + `podman` + `ansible` + "wsl" user with `sudo` access.
 
 ## Install
 
