@@ -1,24 +1,34 @@
 FROM fedora:35
-
 ENV WSL_DISTRO_NAME fedora35
+WORKDIR /provision
+
+COPY ./etc/dnf.conf /etc/dnf/dnf.conf
+COPY ./bin/reinstall-packages .
+
+# reinstall all packages with update dnf.conf (install docs!)
+RUN set -ex; \
+  /provision/reinstall-packages
 
 # install base packages
 RUN set -ex; \
   dnf upgrade -y && \
-  dnf install -y --nodocs \
+  dnf install -y \
+    man-pages \
+    man-db \
+    man \
+    ansible \
     redhat-lsb-core \ 
     cracklib-dicts \
     passwd \
     sudo \
-    zsh \
     git \
     python3 \
     podman \
     crun
 
-# set python3 as default python
-#RUN set -ex; \
-#  alternatives --set python /usr/bin/python3
+# rebuild manpages
+RUN set -ex; \
+  mandb
 
 # create a user (l/wsl p/wsl)
 RUN set -ex; \
@@ -51,9 +61,6 @@ RUN set -ex; \
   find /var/cache -type f -exec rm -rf {} \; && \
   find /var/log -type f | while read f; do /bin/echo -ne "" > $f; done
 
-
 # create dumb file to signify box is provisioned
 RUN set -ex; \
   date > /etc/is_provisioned
-
-USER wsl
