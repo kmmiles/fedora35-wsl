@@ -2,10 +2,9 @@ FROM fedora:35
 ENV WSL_DISTRO_NAME fedora35
 WORKDIR /provision
 
+# reinstall all packages with update dnf.conf (install docs!)
 COPY ./etc/dnf.conf /etc/dnf/dnf.conf
 COPY ./bin/reinstall-packages .
-
-# reinstall all packages with update dnf.conf (install docs!)
 RUN set -ex; \
   /provision/reinstall-packages
 
