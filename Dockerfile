@@ -2,13 +2,13 @@ FROM fedora:35
 ENV WSL_DISTRO_NAME fedora35
 WORKDIR /provision
 
-# reinstall all packages with update dnf.conf (install docs!)
+# update dnf.conf to not skip documentation
 COPY ./etc/dnf.conf /etc/dnf/dnf.conf
-COPY ./bin/reinstall-packages .
-RUN set -ex; \
-  /provision/reinstall-packages
+#COPY ./bin/reinstall-packages .
+#RUN set -ex; \
+#  /provision/reinstall-packages
 
-# install base packages
+# install base packages and rebuild manpages
 RUN set -ex; \
   dnf upgrade -y && \
   dnf install -y \
@@ -24,10 +24,8 @@ RUN set -ex; \
     git \
     python3 \
     podman \
-    crun
-
-# rebuild manpages
-RUN set -ex; \
+    crun \
+  && \
   mandb
 
 # create a user (l/wsl p/wsl)
