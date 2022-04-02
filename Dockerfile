@@ -12,6 +12,7 @@ RUN set -ex; \
 RUN set -ex; \
   dnf upgrade -y && \
   dnf install -y \
+    attr \
     man-pages \
     man-db \
     man \
