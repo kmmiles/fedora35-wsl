@@ -1,8 +1,6 @@
 name: build
 
-on:
-  push:
-    tags: [ 'main' ]
+on: push
 
 jobs:
   build:
