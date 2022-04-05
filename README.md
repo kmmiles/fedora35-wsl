@@ -2,17 +2,29 @@
 [![build](https://github.com/kmmiles/fedora35-wsl/actions/workflows/build.yml/badge.svg)](https://github.com/kmmiles/fedora35-wsl/actions/workflows/build.yml)
 [![release](https://github.com/kmmiles/fedora35-wsl/actions/workflows/release.yml/badge.svg)](https://github.com/kmmiles/fedora35-wsl/actions/workflows/release.yml)
 
-fedora35 distro for wsl2.
+A sensible base fedora35 distro for wsl2.
 
-minimal fedora35 + `podman` + `ansible` + "wsl" user with `sudo` access.
+Built from the `fedora:35` container with the following additions:
+
+- a default `wsl` user with passwordless `sudo` access.
+- `podman` working out of the box.
+- the `rpmfusion` repository.
+- `redhat-lsb-core`, `git`, and `zsh`.
+
+And exclusively on Windows 11:
+
+- `wl-clipboard` to facilitate copying/pasting to/from Windows via Wayland.
+- access to/from other distributions @ `/mnt/wsl/instances`
+- links to Windows folders in the home directory (`Desktop`, `Documents`, `Pictures`, etc)
+
+## Requirements
+
+Windows with WSL2. 
 
 ## Install
 
 - Download and extract the [release](https://github.com/kmmiles/fedora35-wsl/releases) zip.
 - Run the `install.bat` script.
-
-NOTE: If `fedora35` distro already exists, it will be **REMOVED**.
-The script will warn you before doing so.
 
 ## Build it yourself
 
@@ -20,9 +32,6 @@ You'll need `docker` or `podman`.
 
 - Check out the source code and run `./bin/release`
 - Copy the zip from `dist` to windows, extract it, and run `install.bat`
-
-*If you've got Docker, but can't run `bash` scripts, you can still manage.
-You just need to copy the process from `./bin/build` and `./bin/export`.*
 
 ## Make your own custom distro
 
