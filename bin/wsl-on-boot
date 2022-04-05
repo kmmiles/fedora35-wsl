@@ -30,7 +30,7 @@ main() {
   set -e
 
   if [[ -z "$WSL_DISTRO_NAME" ]]; then
-    e "WSL_DISTRO_NAME environment missing. Cowardly giving up."
+    log "WSL_DISTRO_NAME environment missing. Cowardly giving up."
     exit 1
   fi
 
@@ -70,32 +70,30 @@ main() {
     fi
   done
 
-  if [[ "$current_uid" == "0" ]]; then
-    # create default fstab with entry allowing for bind mounting
-    if [[ ! -f /etc/fstab ]]; then
-      log "generating /etc/fstab"
-      print_fstab "$WSL_DISTRO_NAME" > /etc/fstab
-    fi
-
-    # mount / with --rshared to suppress podman warning:
-    # "WARN[0000] "/" is not a shared mount, this could cause issues or missing mounts with rootless containers"
-    log "remounting / with --make-rshared"
-    mount --make-rshared /
-
-    # bind mount instance path, allowing distributions to share files
-    bind_mount="/mnt/wsl/instances/$WSL_DISTRO_NAME"
-    if [[ ! -d  "$bind_mount" ]]; then
-      log "creating bind mount directory: $bind_mount"
-      mkdir -p "$bind_mount"
-    fi
-    log "mounting bind mount: $bind_mount"
-    mount "$bind_mount"
+  # create default fstab with entry allowing for bind mounting
+  if [[ ! -f /etc/fstab ]]; then
+    log "generating /etc/fstab"
+    print_fstab "$WSL_DISTRO_NAME" | sudo tee /etc/fstab > /dev/null
   fi
 
+  # mount / with --rshared to suppress podman warning:
+  # "WARN[0000] "/" is not a shared mount, this could cause issues or missing mounts with rootless containers"
+  log "remounting / with --make-rshared"
+  sudo mount --make-rshared /
+
+  # bind mount instance path, allowing distributions to share files
+  bind_mount="/mnt/wsl/instances/$WSL_DISTRO_NAME"
+  if [[ ! -d  "$bind_mount" ]]; then
+    log "creating bind mount directory: $bind_mount"
+    sudo mkdir -p "$bind_mount"
+  fi
+  log "mounting bind mount: $bind_mount"
+  sudo mount "$bind_mount"
+
   # create link to other wsl instances
-  if [[ -d "/mnt/wsl/instances" ]]; then
-    link_source="/mnt/wsl/instances"
-    link_target="$wsl_home/Instances"
+  link_source="/mnt/wsl/instances"
+  link_target="$wsl_home/Instances"
+  if [[ ! -d "$link_target" ]]; then
     log "creating link: $link_target"
     ln -sf "$link_source" "$link_target"
   fi
