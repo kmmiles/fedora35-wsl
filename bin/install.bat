@@ -1,20 +1,23 @@
 @echo off
 
+set distro_name=fedora35
+set distro_tarball=.\rootfs.tar
+
+set /p distro_name="Specify the distro name (or press enter to use "%distro_name%"): "
+set distro_dest=%USERPROFILE%\WSL2\systems\%distro_name%
+
 :do_prompt
-  choice /C YN /M "IF THE 'fedora35' DISTRO ALREADY EXISTS IT WILL BE REMOVED!!!"
+  choice /C YN /M "IF THE '%distro_name%' DISTRO ALREADY EXISTS IT WILL BE REMOVED!!!"
   IF ERRORLEVEL 2 goto do_exit 
   IF ERRORLEVEL 1 goto do_install
   goto do_prompt
 
 :do_install
-  wsl --terminate fedora35 >nul 2>&1
-  wsl --unregister fedora35 >nul 2>&1
-  wsl --import fedora35 %USERPROFILE%\WSL2\systems\fedora35 .\fedora35-wsl-container.tar
-
-  echo fedora35 should now be available in Windows Terminal (may require restart)
-  echo Otherwise you may start it manually with `wsl -d fedora35`
-  echo Starting fedora35 distro..
-  wsl -d fedora35
+  wsl --terminate %distro_name% >nul 2>&1
+  wsl --unregister %distro_name% >nul 2>&1
+  wsl --import %distro_name% %distro_dest% %distro_tarball%
+  echo Starting %distro_name%...
+  wsl -d %distro_name%
 
 :do_exit
   echo Exiting...

@@ -4,13 +4,17 @@ WORKDIR /provision
 
 # update dnf.conf to not skip documentation
 COPY ./etc/dnf.conf /etc/dnf/dnf.conf
-#COPY ./bin/reinstall-packages .
-#RUN set -ex; \
-#  /provision/reinstall-packages
 
-# install base packages and rebuild manpages
+# upgrade existing packages
+RUN set -ex; dnf upgrade -y
+
+# re-install a few packages. some tools are missing setuid.
+RUN set -ex; dnf reinstall -y \
+  sudo \
+  shadow-utils
+
+# install base packages
 RUN set -ex; \
-  dnf upgrade -y && \
   dnf install -y \
     attr \
     man-pages \
@@ -20,23 +24,29 @@ RUN set -ex; \
     redhat-lsb-core \ 
     cracklib-dicts \
     passwd \
-    sudo \
     git \
     python3 \
     podman \
     crun \
-  && \
-  mandb
+    zsh \
+    zsh-syntax-highlighting \
+    zsh-autosuggestions \
+    wl-clipboard
 
-# create a user (l/wsl p/wsl)
-RUN set -ex; \
-  useradd -m -s /bin/bash -G wheel "wsl" && \
-  printf "wsl" | passwd --stdin "wsl" 
+# rebuild manpages
+RUN set -ex; mandb
 
-# fix `podman` error: newuidmap: write to uid_map failed: Operation not permitted
+# add rpm fusion repo
 RUN set -ex; \
-  chmod 4755 /usr/bin/newgidmap && \
-  chmod 4755 /usr/bin/newuidmap
+  dnf install -y \
+  https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
+  https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+
+# create wsl user and set passwords
+RUN set -ex; \
+  useradd -m -s /bin/zsh -G wheel "wsl" && \
+  printf "wsl" | passwd --stdin "wsl"  && \
+  printf "wsl" | passwd --stdin "root" 
 
 # create dumb `docker` wrapper for `podman`
 RUN set -ex; \
@@ -44,21 +54,20 @@ RUN set -ex; \
   printf "exec /usr/bin/podman \"\$@\"\n" >> /usr/bin/docker && \
   chmod +x /usr/bin/docker
 
-# copy configs
-COPY ./etc/passwordless /etc/sudoers.d/passwordless
-COPY ./etc/fstab /etc/fstab
+# copy stuff
 COPY ./etc/wsl.conf /etc/wsl.conf
+COPY ./etc/passwordless /etc/sudoers.d/passwordless
+COPY ./bin/wsl-on-boot /usr/local/bin
 
-# cleanup
+# handle shrinking image
+ARG SHRINK
 RUN set -ex; \
-  dnf autoremove -y && \
-  dnf clean all -y && \
-  find /root -mindepth 1 -exec rm -rf {} \; && \
-  find /tmp -mindepth 1 -exec rm -rf {} \; && \
-  find /var/tmp -mindepth 1 -exec rm -rf {} \; && \
-  find /var/cache -type f -exec rm -rf {} \; && \
-  find /var/log -type f | while read f; do /bin/echo -ne "" > $f; done
-
-# create dumb file to signify box is provisioned
-RUN set -ex; \
-  date > /etc/is_provisioned
+  if [[ "$SHRINK" == true ]]; then \
+    dnf autoremove -y \
+    dnf clean all -y \
+    find /root -mindepth 1 -exec rm -rf {} \; \
+    find /tmp -mindepth 1 -exec rm -rf {} \; \
+    find /var/tmp -mindepth 1 -exec rm -rf {} \; \
+    find /var/cache -type f -exec rm -rf {} \; \
+    find /var/log -type f | while read -r f; do /bin/echo -ne "" > "$f"; done \
+  fi

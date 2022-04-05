@@ -10,5 +10,5 @@ if docker container exists "${docker_tag_name:-}"; then
 fi
 
 docker run --name "${docker_tag_name:-}" "${docker_tag_name:-}"
-mkdir -p "${root_dir}/dist"
-docker export "${docker_tag_name:-}" --output="${root_dir}/dist/${docker_tag_name:-}-container.tar"
+mkdir -p "${root_dir:-}/dist"
+docker export "${docker_tag_name:-}" --output="${root_dir}/dist/rootfs.tar"
