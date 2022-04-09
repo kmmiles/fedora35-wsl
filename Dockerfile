@@ -42,9 +42,11 @@ RUN set -ex; \
   https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
   https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
 
-# create wsl user and set passwords
+# user, groups and passwords
 RUN set -ex; \
-  useradd -m -s /bin/zsh -G wheel "wsl" && \
+  groupadd -f "libvirt" && \
+  groupadd -f "kvm" && \
+  useradd -m -s /bin/zsh -G wheel,kvm,libvirt "wsl" && \
   printf "wsl" | passwd --stdin "wsl"  && \
   printf "wsl" | passwd --stdin "root" 
 
