@@ -37,7 +37,7 @@ main() {
   # determine some values
   current_uid="$(id -u)"
   current_gid="$(id -g)"
-  wsl_user="wsl"
+  wsl_user="$(id -un)"
   wsl_home="/home/$wsl_user"
   win_drive="$(basename "$(grep drvfs /proc/self/mounts | head -n 1 | cut -d' ' -f 2)")"
   win_user="$(get_win_user "$win_drive")"
