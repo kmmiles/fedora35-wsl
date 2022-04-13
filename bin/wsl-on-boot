@@ -56,9 +56,9 @@ main() {
   # fix kvm permissions
   if [[ -e /dev/kvm ]]; then
     log "changing group of /dev/kvm to kvm"
-    chgrp kvm /dev/kvm
+    sudo chgrp kvm /dev/kvm
     log "giving group read-write to /dev/kvm"
-    chmod g+rw /dev/kvm
+    sudo chmod g+rw /dev/kvm
   fi
 
   # create symlink to the home directory on windows
