@@ -1,0 +1,79 @@
+#!/bin/bash
+
+log() {
+  printf "[%s] %s\n" "$(date +'%m/%d/%Y %r')" "$*"
+}
+
+get_win_user() {
+  local win_drive="$1"
+  declare -a invalid_users
+  invalid_users=( Administrator Default DefaultAccount Guest Public WDAGUtilityAccount )
+  find "/mnt/$win_drive/Users" -mindepth 1 -maxdepth 1 -type d |
+    while read -r line; do
+      user="$(basename "$line")"
+      if [[ ${invalid_users[*]} =~ ${user} ]]; then
+        continue
+      fi
+    
+      echo "$user"
+      break
+    done
+}
+
+main() {
+  set -e
+
+  wsl_distro="${WSL_DISTRO_NAME:-}"
+  if [[ -z "$wsl_distro" ]]; then
+    log "WSL_DISTRO_NAME environment missing. Cowardly giving up."
+    exit 1
+  fi
+
+  # set some values
+  current_uid="$(id -u)"
+  if [[ "$current_uid" == 0 ]]; then
+    log "ERROR: Don't run this script as root.\n"
+    exit 1
+  fi
+
+  wsl_user="wsl"
+  wsl_home="/home/$wsl_user"
+  wsl_mount_root="/mnt/wsl/instances"
+  win_drive="$(basename "$(grep drvfs /proc/self/mounts | head -n 1 | cut -d' ' -f 2)")"
+  if ! win_user="$(get_win_user "$win_drive")"; then
+    log "ERROR: get_win_user failed\n"
+    exit 1
+  fi
+  win_home="/mnt/$win_drive/Users/$win_user"
+
+  # create symlink to windows home directory
+  win_home_link="$wsl_home/WindowsHome"
+  if [[ ! -d "$win_home_link" ]]; then
+    ln -vsf "$win_home" "$win_home_link"
+  fi
+
+  # create links to additional windows folders
+  for d in Downloads Music Documents Pictures; do
+    link_source="$win_home_link/$d"
+    link_target="$wsl_home/$d"
+    if [[ -d "$link_source" && ! -d "$link_target" ]]; then
+      ln -vsf "$link_source" "$link_target"
+    fi
+  done
+
+  # create `Code` symlink to ~/.local/src
+  mkdir -p "$wsl_home"/.local/src
+  if [[ ! -d "$wsl_home/Code" ]]; then
+    ln -vsf "$wsl_home/.local/src" "$wsl_home/Code"
+  fi
+
+  # create `Instances` symlink to other wsl instances
+  if [[ -d "$wsl_mount_root" ]]; then
+    link_target="$wsl_home/Instances"
+    if [[ ! -d "$link_target" ]]; then
+      ln -vsf "$wsl_mount_root" "$link_target"
+    fi
+  fi
+}
+
+main "$@"

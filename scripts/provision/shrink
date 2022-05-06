@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if ! ${SHRINK:-false}; then
+  printf "SHRINK environment is false, skipping shrink process\n"
+  exit 0
+fi
+
+printf "Performing shrink process\n"
+set -ex
+dnf autoremove -y
+dnf clean all -y
+find /root -mindepth 1 -exec rm -rf {} \;
+find /tmp -mindepth 1 -exec rm -rf {} \;
+find /var/tmp -mindepth 1 -exec rm -rf {} \;
+find /var/cache -type f -exec rm -rf {} \;
+find /var/log -type f | while read -r f; do /bin/echo -ne "" > "$f"; done

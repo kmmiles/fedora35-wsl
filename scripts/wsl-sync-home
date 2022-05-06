@@ -6,7 +6,9 @@ usage() {
   cat << EOF >&2
 Usage: $(basename "$0") <DISTRO>
 
-Syncs files to another WSL2 <DISTRO>
+\`rsync\` this hosts \`/home/wsl\` directory to <DISTRO>
+
+<DISTRO> is the name of a WSL2 distribution (list with \`wsl.exe --list\`).
 EOF
 }
 
@@ -18,13 +20,13 @@ onerr() { local s=$?; err "$0:${BASH_LINENO[0]} $BASH_COMMAND"; exit $s; }
 do_sync() {
   local src_dir dest_dir
 
-  src_dir="$1"
+  src_dir="${1:-}"
   if [[ ! -d "$src_dir" ]]; then
     printf "No such directory: %s\n" "$src_dir"
     return 1
   fi
 
-  dest_dir="$2"
+  dest_dir="${2:-}"
   if [[ ! -d "$dest_dir" ]]; then
     printf "No such directory: %s\n" "$dest_dir"
     return 1
@@ -39,24 +41,29 @@ do_sync() {
     "$dest_dir" 
 }
 
-while getopts 'h' flag; do
-  case "${flag}" in
-    *) usage ; exit 1 ;; 
-  esac
-done
+main() {
+  while getopts 'h' flag; do
+    case "${flag}" in
+      *) usage ; exit 1 ;; 
+    esac
+  done
 
-shift $((OPTIND-1))
-DISTRO="${1:-}"
-if [[ -z "$DISTRO" ]]; then
-  usage
-  exit 1
-fi
+  shift $((OPTIND-1))
+  DISTRO="${1:-}"
+  if [[ -z "$DISTRO" ]]; then
+    usage
+    exit 1
+  fi
 
-distro_path="/mnt/wsl/instances/$DISTRO"
-if [[ ! -d "$distro_path" ]]; then
-  printf "No such directory: %s\n" "$distro_path"
-  exit 1
-fi
+  distro_path="/mnt/wsl/instances/$DISTRO"
+  if [[ ! -d "$distro_path" ]]; then
+    printf "No such directory: %s\n" "$distro_path"
+    exit 1
+  fi
 
-do_sync "$HOME/.local/src" "$distro_path/home/wsl/.local"
-do_sync "$HOME/VMs" "$distro_path/home/wsl"
+  do_sync "$HOME/.local/src" "$distro_path/home/wsl/.local"
+  do_sync "$HOME/VMs" "$distro_path/home/wsl"
+}
+
+main "$@"
+

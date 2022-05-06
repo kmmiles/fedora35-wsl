@@ -4,8 +4,4 @@ root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=/dev/null
 . "$root_dir"/profile.sh
 
-set -ex ; \
-  docker build \
-    --build-arg SHRINK="${SHRINK:-false}" \
-    -t "${DOCKER_TAG_NAME:-}" \
-    "${root_dir:-}"
+docker run --privileged --user wsl -it --rm "${DOCKER_TAG_NAME:-}" bash

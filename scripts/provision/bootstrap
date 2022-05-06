@@ -1,0 +1,191 @@
+#!/bin/sh
+
+handle_users_groups() {
+  primary_user="${1:-}"
+  if [ -z "$primary_user" ]; then
+    return 0
+  fi
+
+  sudoer_group="${2:-}"
+  if [ -z "$sudoer_group" ]; then
+    return 0
+  fi
+
+  # enable passwordless sudo
+  printf "%%%s ALL=(ALL) NOPASSWD:ALL\n" "$sudoer_group" > \
+    /etc/sudoers.d/passwordless
+
+  # create primary user
+  printf "creating %s user...\n" "$primary_user"
+  useradd -m -s /bin/zsh "$primary_user"
+
+  # set passwords
+  for user in root "$primary_user"; do
+    printf "setting %s password..." "$user"
+    #printf "wsl" | passwd --stdin "$user"
+    printf "wsl\nwsl\n" | passwd "$user"
+  done
+
+  # add groups
+  for group in "$sudoer_group" kvm libvirt; do
+    if ! getent group "$group" > /dev/null 2>&1; then
+      printf "adding group: %s...\n" "$group"
+      groupadd -f "$group"
+    fi
+    printf "adding user %s to group %s...\n" "$primary_user" "$group"
+    /usr/sbin/usermod -a -G "$group" "$primary_user"
+  done
+
+  # lock root password
+  password_state=$(passwd -S root | cut -d' ' -f 2)
+  if [ "$password_state" != "L" ]; then
+    printf "Locking root password...\n"
+    passwd -l root
+  fi
+
+}
+
+write_wsl_conf() {
+  wsl_distro_name="${1:-}"
+  if [ -z "$wsl_distro_name" ]; then
+    return 0
+  fi
+
+  cat << EOF > "/etc/wsl.conf"
+[automount]
+enabled = true
+mountFsTab = true
+root = /mnt/
+options = metadata,uid=1000,gid=1000,umask=0022,fmask=11,case=off
+
+[network]
+generatehosts = true
+generateresolvconf = true
+hostname = $wsl_distro_name
+
+[interop]
+enabled = true
+appendwindowspath = true
+
+[user]
+default = wsl
+
+[boot]
+command="wsl-on-boot > /wsl-on-boot.log"
+EOF
+}
+
+handle_dnf() {
+  wsl_distro_name="${WSL_DISTRO_NAME:-unknown}"
+  # the default dnf.conf might have some settings we don't like.
+  # so generate it to a sane default state.
+  printf "Writing /etc/dnf.conf...\n"
+  cat << EOF > "/etc/dnf.conf"
+[main]
+gpgcheck=1
+installonly_limit=3
+clean_requirements_on_remove=True
+best=False
+skip_if_unavailable=True
+EOF
+
+  # there can be issues related to shadow-utils and sudo;
+  # re-installing will correctly set their caps and perms.
+  printf "reinstall sudo and shadow-utils\n"
+  dnf reinstall -y \
+    sudo \
+    shadow-utils
+
+  # install packages
+  printf "install minimal packages...\n"
+  dnf install -y \
+    bash \
+    zsh \
+    passwd \
+    cracklib-dicts \
+    ansible
+
+  # upgrade all packages
+  printf "upgrading packages...\n"
+  dnf upgrade -y
+
+  # setup users/groups
+  printf "Setting up users / groups / sudo..."
+  handle_users_groups "wsl" "wheel"
+
+  # write /etc/wsl.conf
+  printf "Writing /etc/wsl.conf...\n"
+  write_wsl_conf "$wsl_distro_name"
+
+  printf "handle_dnf complete\n"
+}
+
+handle_apt() {
+  wsl_distro_name="${WSL_DISTRO_NAME:-unknown}"
+
+  export DEBIAN_FRONTEND=noninteractive
+  export DEBCONF_NONINTERACTIVE_SEEN=true
+
+  printf "setting debconf selections...\n"
+  echo 'tzdata tzdata/Areas select Etc' | debconf-set-selections
+  echo 'tzdata tzdata/Zones/Etc select UTC' | debconf-set-selections
+
+  printf "unminize distribution...\n"
+  yes | unminimize
+
+  printf "upgrading packages...\n"
+  apt-get update -y
+  apt-get upgrade -y
+
+  printf "install minimal packages...\n"
+  apt-get install -y --no-install-recommends \
+    software-properties-common \
+    ansible \
+    ca-certificates \
+    tzdata \
+    bash \
+    zsh \
+    sudo \
+    passwd
+
+  # setup users/groups
+  printf "Setting up users and groups..."
+  handle_users_groups "wsl" "wheel"
+
+  # write /etc/wsl.conf
+  printf "Writing /etc/wsl.conf...\n"
+  write_wsl_conf "$wsl_distro_name"
+
+  printf "handle_apt complete\n"
+}
+
+main() {
+  if [ "$(id -u)" != "0" ]; then
+    printf "Script must be ran as root\n"
+    exit 1
+  fi
+
+  if [ ! -f /etc/os-release ]; then
+    printf "No such file: /etc/os-release\n"
+    exit 1
+  fi
+
+  if [ -z "$WSL_DISTRO_NAME" ]; then
+    printf "Missing environment: %s\n" "\$WSL_DISTRO_NAME"
+    exit 1
+  fi
+
+  . /etc/os-release
+
+  case "$ID" in
+    fedora|rocky|alma|centos|rhel)
+      handle_dnf
+      ;;
+    debian|ubuntu)
+      handle_apt
+      ;;
+  esac
+}
+
+main "$@"
+

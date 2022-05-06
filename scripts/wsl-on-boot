@@ -1,0 +1,62 @@
+#!/bin/bash
+
+log() {
+  printf "[%s] %s\n" "$(date +'%m/%d/%Y %r')" "$*"
+}
+
+main() {
+  set -e
+
+  wsl_distro="${WSL_DISTRO_NAME:-}"
+  if [[ -z "$wsl_distro" ]]; then
+    log "WSL_DISTRO_NAME environment missing. Cowardly giving up."
+    exit 1
+  fi
+
+  # bail if no wsl home
+  wsl_user="wsl"
+  wsl_home="/home/$wsl_user"
+  wsl_mount="/mnt/wsl/instances/$wsl_distro"
+  if [[ ! -f "$wsl_home" ]]; then
+    printf "No such directory: %s\n" "$wsl_home"
+    exit 1
+  fi
+
+  # print some information
+  log "wsl_distro: $wsl_distro"
+  current_uid="$(id -u)"
+  current_gid="$(id -g)"
+  log "current_uid: $current_uid"
+  log "current_gid: $current_gid"
+  log "wsl_user: $wsl_user"
+  log "wsl_home: $wsl_home"
+  log "wsl_mount: $wsl_mount"
+
+  # create a bind mount, allowing other distributions access to this distros filesystem.
+  if [[ ! -f "/etc/fstab" ]] || ! grep -q "$wsl_mount" "/etc/fstab"; then
+    log "creating entry in fstab for bind mount"
+    printf "/ %s none defaults,bind,X-mount.mkdir 0 0\n" "$wsl_mount" | \
+      sudo tee -a /etc/fstab > /dev/null
+  fi
+
+  # bind that mount
+  if [[ ! -d  "$wsl_mount" ]]; then
+    log "mounting wsl mount: $wsl_mount"
+    sudo mkdir -p "$wsl_mount"
+    sudo mount "$wsl_mount"
+  fi
+
+  # fix a podman warning: "WARN[0000] "/" is not a shared mount"
+  log "remounting / with --make-rshared"
+  sudo mount --make-rshared /
+
+  # fix kvm permissions. they're not preserved across wsl shutdowns.
+  if [[ -e /dev/kvm ]]; then
+    log "changing group of /dev/kvm to kvm"
+    sudo chgrp kvm /dev/kvm
+    log "giving group read-write to /dev/kvm"
+    sudo chmod g+rw /dev/kvm
+  fi
+}
+
+main "$@"
