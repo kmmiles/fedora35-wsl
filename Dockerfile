@@ -13,9 +13,7 @@ RUN ./provision/scripts/bootstrap
 COPY ./scripts/wsl-on-boot \
      ./scripts/wsl-sync-home \
      ./scripts/wsl-home-links \ 
-     /usr/local/bin
-#COPY ./scripts/wsl-sync-home /usr/local/bin
-#COPY ./scripts/wsl-home-links /usr/local/bin
+     /usr/local/bin/
 
 # handle shrinking image
 ARG SHRINK

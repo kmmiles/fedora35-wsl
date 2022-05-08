@@ -17,7 +17,7 @@ main() {
   wsl_user="wsl"
   wsl_home="/home/$wsl_user"
   wsl_mount="/mnt/wsl/instances/$wsl_distro"
-  if [[ ! -f "$wsl_home" ]]; then
+  if [[ ! -d "$wsl_home" ]]; then
     printf "No such directory: %s\n" "$wsl_home"
     exit 1
   fi
